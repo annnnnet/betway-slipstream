@@ -112,3 +112,48 @@ jobs:
           groups: testers
           releaseNotes: ${{ github.event.inputs.release_notes || github.event.head_commit.message }}
           file: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+
+  # The same Flutter widget tree, compiled for the browser.
+  #
+  # Not a deliverable — the APK is. This exists so the app can be looked at
+  # and clicked through without an Android device, an emulator, or the ~4GB of
+  # toolchain either implies: the artifact is a few MB of static files that
+  # open in any browser. Useful for a reviewer, and useful for checking a UI
+  # change without waiting on an APK install.
+  web-preview:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate the web platform scaffolding
+        run: |
+          flutter create --org com.slipstream --project-name slipstream \
+            --platforms=web /tmp/scaffold-web
+          cp -r /tmp/scaffold-web/web ./web
+
+      - run: flutter pub get
+
+      - name: Resolve the API origin
+        run: |
+          API_URL="${{ github.event.inputs.api_url || vars.API_URL }}"
+          if [ -z "$API_URL" ]; then
+            echo "::error::No API origin. Set the API_URL repository variable, or pass api_url when running this workflow manually."
+            exit 1
+          fi
+          echo "API_URL=$API_URL" >> "$GITHUB_ENV"
+
+      # `--base-href /` keeps the build openable straight from disk or from
+      # any static host, rather than assuming a subdirectory.
+      - run: flutter build web --release --base-href / --dart-define=API_URL=$API_URL
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slipstream-flutter-web
+          path: apps/mobile/build/web
