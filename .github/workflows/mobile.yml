@@ -31,7 +31,10 @@ jobs:
     # and the `secrets` context is not permitted there at all — using it makes
     # the whole workflow fail validation, which is how this was found.
     env:
-      FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+      # The Firebase App ID is a public identifier — it ships inside every APK
+      # in google-services.json — so it lives in a variable, not a secret. Only
+      # the service-account JSON is genuinely sensitive.
+      FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
 
     steps:
       - uses: actions/checkout@v4
@@ -104,17 +107,15 @@ jobs:
           name: slipstream-release-apk
           path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
 
-      # Distribution is skipped rather than failed when the secret is absent,
-      # so a fork or a first push still gets a green build and a downloadable
-      # artifact instead of a red X for a credential it was never given.
       # Skipped rather than failed when no credentials are configured, so a
-      # fork or a first push still gets a green build and a downloadable APK.
+      # fork or a first push still gets a green build and a downloadable APK
+      # instead of a red X for a credential it was never given.
       # FIREBASE_APP_ID comes from the job-level env above — see the note there.
       - name: Distribute to testers
         if: ${{ env.FIREBASE_APP_ID != '' }}
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
-          appId: ${{ secrets.FIREBASE_APP_ID }}
+          appId: ${{ vars.FIREBASE_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           groups: testers
           releaseNotes: ${{ github.event.inputs.release_notes || github.event.head_commit.message }}
