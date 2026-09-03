@@ -147,6 +147,14 @@ jobs:
             echo "::error::No API origin. Set the API_URL repository variable, or pass api_url when running this workflow manually."
             exit 1
           fi
+          # 10.0.2.2 is the Android emulator's alias for the host machine's
+          # loopback. It means nothing in a desktop browser, so a web build
+          # compiled with it would fail every request for a reason that looks
+          # like a bug in the app. Translate it back to localhost here.
+          case "$API_URL" in
+            *10.0.2.2*) API_URL="${API_URL//10.0.2.2/localhost}"
+                        echo "::notice::Rewrote the emulator alias to $API_URL for the web build." ;;
+          esac
           echo "API_URL=$API_URL" >> "$GITHUB_ENV"
 
       # `--base-href /` keeps the build openable straight from disk or from
