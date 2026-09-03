@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Only created when someone signs in. The product works fully signed-out;
+/// an account exists to own a history of codes, nothing more.
+model User {
+  id          String       @id @default(uuid())
+  supabaseSub String       @unique
+  email       String       @unique
+  name        String?
+  avatarUrl   String?
+  createdAt   DateTime     @default(now())
+  actions     SlipAction[]
+}
+
+/// A resolved slip, cached by booking code.
+///
+/// Betway's FindBookABet is a public endpoint with no rate-limit headers, so
+/// this cache exists to be a good citizen rather than to be fast: a code that
+/// half a Twitter thread is pasting resolves upstream once, not once per
+/// visitor. Odds inside `selections` go stale, which is why the resolve path
+/// treats the cache as a *display* fallback and re-fetches whenever a
+/// verification is about to be produced.
+model CachedSlip {
+  code         String   @id
+  fingerprint  String
+  isSingleBet  Boolean
+  isBuildABet  Boolean
+  combinedOdds Float
+  /// Serialised Selection[] exactly as the shared contract defines it.
+  selections   Json
+  resolvedAt   DateTime
+  hits         Int      @default(0)
+
+  /// Answers "has this exact bet been booked under another code?" — the
+  /// question the conversion flow needs and the one a code string cannot.
+  @@index([fingerprint])
+  @@index([resolvedAt])
+}
+
+enum SlipActionKind {
+  RESOLVE
+  CREATE
+  CONVERT
+}
+
+/// Audit trail of every decode / encode / convert. Doubles as signed-in
+/// history and as the evidence log behind the verification deliverable.
+model SlipAction {
+  id             String         @id @default(uuid())
+  kind           SlipActionKind
+  code           String
+  /// Set on CONVERT: the code the bet was carried over from.
+  sourceCode     String?
+  fingerprint    String
+  selectionCount Int
+  combinedOdds   Float
+  /// Null until a verification has been run against Betway for this code.
+  verified       Boolean?
+  verification   Json?
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+
+  @@index([userId, createdAt])
+  @@index([code])
+  @@index([createdAt])
+}
