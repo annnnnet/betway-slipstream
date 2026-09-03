@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The API's unit tests import @prisma/client for its error types, so the
+      # client has to exist before ts-jest resolves them.
+      - run: pnpm --filter @slipstream/api exec prisma generate --schema prisma/schema.prisma
+
+      - run: pnpm --filter @slipstream/shared test
+      - run: pnpm --filter @slipstream/api test
+      - run: pnpm --filter @slipstream/web test
+
+      # Type errors are the failure mode a unit-test run misses entirely, and
+      # a Next build is the only thing that checks the app end to end.
+      - run: pnpm --filter @slipstream/api build
+      - run: pnpm --filter @slipstream/web build
+        env:
+          NEXT_PUBLIC_API_URL: https://ci.invalid
+          NEXT_PUBLIC_SUPABASE_URL: https://ci.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci
+
+  # Deliberately separate, and deliberately not required. This suite talks to
+  # the real Betway API, so a Betway outage or a settled fixture must never be
+  # able to block a merge — but a silent upstream contract change must still
+  # be visible, which is what this job is for.
+  live:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @slipstream/api exec prisma generate --schema prisma/schema.prisma
+      - name: Betway contract check
+        run: pnpm --filter @slipstream/api test:live

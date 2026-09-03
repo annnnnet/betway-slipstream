@@ -1,0 +1,85 @@
+name: Android APK → Firebase App Distribution
+
+# Built in CI rather than on a laptop. The Android toolchain (Flutter SDK,
+# JDK, Android SDK, build-tools) is ~5GB of setup that produces a build nobody
+# can reproduce; a runner installs it from scratch every time, so the APK a
+# tester receives is always built from a known-clean state at a known commit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/mobile.yml'
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: 'Release notes shown to testers'
+        required: false
+        default: 'Manual build'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # apps/mobile holds only pubspec.yaml, lib/ and test/ — the generated
+      # android/ tree is not committed, because it is 40+ files of boilerplate
+      # that no human edits and that `flutter create` reproduces exactly.
+      # Generating it into a scratch directory and copying it in keeps our own
+      # lib/main.dart safe from being overwritten by the counter-app template.
+      - name: Generate the Android platform scaffolding
+        run: |
+          flutter create --org com.slipstream --project-name slipstream \
+            --platforms=android /tmp/scaffold
+          cp -r /tmp/scaffold/android ./android
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      # The API origin is compiled in, so a debug build cannot accidentally
+      # ship pointing at a laptop. Set API_URL as a repository variable.
+      - name: Build release APK
+        run: |
+          flutter build apk --release \
+            --dart-define=API_URL=${{ vars.API_URL }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slipstream-release-apk
+          path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+
+      # Distribution is skipped rather than failed when the secret is absent,
+      # so a fork or a first push still gets a green build and a downloadable
+      # artifact instead of a red X for a credential it was never given.
+      - name: Distribute to testers
+        if: ${{ env.FIREBASE_APP_ID != '' }}
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          groups: testers
+          releaseNotes: ${{ github.event.inputs.release_notes || github.event.head_commit.message }}
+          file: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
