@@ -9,6 +9,8 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "prestart": "pnpm --filter @slipstream/shared build",
     "start": "nest start",
+    "predev": "pnpm --filter @slipstream/shared build",
+    "dev": "nest start --watch",
     "prestart:dev": "pnpm --filter @slipstream/shared build",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",

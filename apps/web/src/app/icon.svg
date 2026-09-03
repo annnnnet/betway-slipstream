@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- A betslip with a ticket notch, in the app's jade. Drawn rather than
+       imported so the icon carries no dependency and stays crisp at 16px. -->
+  <rect width="32" height="32" rx="8" fill="#0F1117"/>
+  <path
+    d="M7 11a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.2a2.8 2.8 0 0 0 0 5.6V21a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-2.2a2.8 2.8 0 0 0 0-5.6z"
+    fill="#4ADE9B"/>
+  <!-- Two legs of a slip. Short bar, long bar — reads as a list, not a logo. -->
+  <rect x="11" y="13.5" width="10" height="2" rx="1" fill="#0F1117"/>
+  <rect x="11" y="17.5" width="6" height="2" rx="1" fill="#0F1117"/>
+</svg>

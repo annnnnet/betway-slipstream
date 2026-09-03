@@ -30,15 +30,19 @@ export function TopBar() {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+      {/* Everything here is sized down at 390px. Laid out generously it
+          overflows a phone by ~80px, and a header that scrolls sideways
+          drags the whole page with it. */}
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-3 sm:gap-6 sm:px-4">
+        <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold tracking-tight">
           <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
             <Ticket className="size-4" />
           </span>
-          Slipstream
+          {/* The mark alone identifies the app once you are inside it. */}
+          <span className="hidden sm:inline">Slipstream</span>
         </Link>
 
-        <nav className="flex items-center gap-1 text-sm">
+        <nav className="flex items-center gap-0.5 text-sm sm:gap-1">
           {LINKS.map((link) => {
             const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
             return (
@@ -46,7 +50,7 @@ export function TopBar() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  'rounded-lg px-3 py-1.5 transition-colors',
+                  'rounded-lg px-2.5 py-1.5 transition-colors sm:px-3',
                   active
                     ? 'bg-secondary text-foreground'
                     : 'text-muted-foreground hover:text-foreground',
@@ -58,21 +62,21 @@ export function TopBar() {
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {/* Rendering nothing until the session resolves avoids a "Sign in"
               button flashing for someone who is already signed in. */}
           {loading ? null : user ? (
             <>
-              <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
-              <Button variant="ghost" size="sm" onClick={signOut}>
+              <span className="hidden text-sm text-muted-foreground md:inline">{user.email}</span>
+              <Button variant="ghost" size="sm" onClick={signOut} aria-label="Sign out">
                 <LogOut className="size-4" />
-                Sign out
+                <span className="hidden sm:inline">Sign out</span>
               </Button>
             </>
           ) : (
-            <ButtonLink href="/login" variant="ghost" size="sm">
+            <ButtonLink href="/login" variant="ghost" size="sm" aria-label="Sign in">
               <LogIn className="size-4" />
-              Sign in
+              <span className="hidden sm:inline">Sign in</span>
             </ButtonLink>
           )}
         </div>
