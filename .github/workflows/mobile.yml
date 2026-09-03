@@ -12,6 +12,9 @@ on:
       - '.github/workflows/mobile.yml'
   workflow_dispatch:
     inputs:
+      api_url:
+        description: 'API origin to compile in. Overrides the API_URL repo variable. Use your LAN IP (http://192.168.x.x:4000) to test against a laptop before the API is deployed.'
+        required: false
       release_notes:
         description: 'Release notes shown to testers'
         required: false
@@ -57,12 +60,38 @@ jobs:
       - name: Test
         run: flutter test
 
-      # The API origin is compiled in, so a debug build cannot accidentally
-      # ship pointing at a laptop. Set API_URL as a repository variable.
-      - name: Build release APK
+      # The API origin is compiled in, so a build cannot silently ship
+      # pointing somewhere unintended. Resolve it once here.
+      #
+      # Failing loudly on an empty value matters more than it looks:
+      # `--dart-define=API_URL=` sets the key to an empty *string*, which
+      # counts as "defined", so Dart's `String.fromEnvironment` default never
+      # applies. The APK would install, launch, and fail every request against
+      # an empty origin — a broken app that looks like a broken API.
+      - name: Resolve the API origin
         run: |
-          flutter build apk --release \
-            --dart-define=API_URL=${{ vars.API_URL }}
+          API_URL="${{ github.event.inputs.api_url || vars.API_URL }}"
+          if [ -z "$API_URL" ]; then
+            echo "::error::No API origin. Set the API_URL repository variable, or pass api_url when running this workflow manually."
+            exit 1
+          fi
+          echo "API_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "Building against $API_URL"
+
+      # Android has blocked cleartext HTTP by default since API 28, so an APK
+      # built against a plain-http origin — which is what testing against a
+      # laptop on the same wifi means — fails every request with a bare
+      # SocketException and no hint as to why. Opt in only for those builds;
+      # a real https origin never gets the exemption.
+      - name: Allow cleartext traffic (http origins only)
+        if: ${{ startsWith(env.API_URL, 'http://') }}
+        run: |
+          sed -i 's|<application|<application android:usesCleartextTraffic="true"|' \
+            android/app/src/main/AndroidManifest.xml
+          echo "::warning::Cleartext HTTP enabled because API_URL is not https. Do not distribute this build to testers."
+
+      - name: Build release APK
+        run: flutter build apk --release --dart-define=API_URL=$API_URL
 
       - uses: actions/upload-artifact@v4
         with:
