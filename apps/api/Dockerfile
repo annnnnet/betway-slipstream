@@ -84,4 +84,4 @@ RUN ./apps/api/node_modules/.bin/prisma generate --schema apps/api/prisma/schema
 WORKDIR /repo/apps/api
 EXPOSE 4000
 
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]

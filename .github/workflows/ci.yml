@@ -33,6 +33,10 @@ jobs:
       # Type errors are the failure mode a unit-test run misses entirely, and
       # a Next build is the only thing that checks the app end to end.
       - run: pnpm --filter @slipstream/api build
+
+      # Catches the class of bug a build cannot: an artefact that compiles
+      # but does not run (wrong entrypoint path, missing runtime dep).
+      - run: pnpm --filter @slipstream/api test:dist-boot
       - run: pnpm --filter @slipstream/web build
         env:
           NEXT_PUBLIC_API_URL: https://ci.invalid

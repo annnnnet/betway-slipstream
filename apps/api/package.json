@@ -11,11 +11,12 @@
     "start": "nest start",
     "prestart:dev": "pnpm --filter @slipstream/shared build",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/src/main",
+    "start:prod": "node dist/main",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:live": "jest --config ./jest.live.config.js"
+    "test:live": "jest --config ./jest.live.config.js",
+    "test:dist-boot": "node scripts/dist-boot-check.js"
   },
   "dependencies": {
     "@slipstream/shared": "workspace:*",
