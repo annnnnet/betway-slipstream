@@ -15,6 +15,9 @@ on:
       api_url:
         description: 'API origin to compile in. Overrides the API_URL repo variable. Use your LAN IP (http://192.168.x.x:4000) to test against a laptop before the API is deployed.'
         required: false
+      testers:
+        description: 'Comma-separated tester emails to invite for this build. Adds to the FIREBASE_TESTERS variable rather than replacing it.'
+        required: false
       release_notes:
         description: 'Release notes shown to testers'
         required: false
@@ -111,13 +114,22 @@ jobs:
       # fork or a first push still gets a green build and a downloadable APK
       # instead of a red X for a credential it was never given.
       # FIREBASE_APP_ID comes from the job-level env above — see the note there.
+      # Individual emails rather than a group, so inviting an external
+      # reviewer costs one workflow input instead of a console visit and a
+      # group whose *alias* has to match a string buried in this file. Groups
+      # still work if FIREBASE_TESTER_GROUPS is set; both can be used at once.
+      #
+      # Testers do not need a Google account or a registered device — they get
+      # an email invite and install through Firebase's App Tester app. That is
+      # the whole reason Android distribution is cheap and iOS is not.
       - name: Distribute to testers
         if: ${{ env.FIREBASE_APP_ID != '' }}
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ vars.FIREBASE_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          groups: testers
+          testers: ${{ github.event.inputs.testers && format('{0},{1}', vars.FIREBASE_TESTERS, github.event.inputs.testers) || vars.FIREBASE_TESTERS }}
+          groups: ${{ vars.FIREBASE_TESTER_GROUPS }}
           releaseNotes: ${{ github.event.inputs.release_notes || github.event.head_commit.message }}
           file: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
 
