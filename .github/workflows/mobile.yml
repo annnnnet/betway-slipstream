@@ -101,10 +101,12 @@ jobs:
       # Distribution is skipped rather than failed when the secret is absent,
       # so a fork or a first push still gets a green build and a downloadable
       # artifact instead of a red X for a credential it was never given.
+      # Guarded on the secret directly. A step's own `env:` block is not
+      # reliably visible to that step's `if:`, so the previous form could have
+      # evaluated an always-empty string and skipped distribution even once
+      # the credentials existed — a silent no-op, which is the worst kind.
       - name: Distribute to testers
-        if: ${{ env.FIREBASE_APP_ID != '' }}
-        env:
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        if: ${{ secrets.FIREBASE_APP_ID != '' }}
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
