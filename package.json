@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "check:workflows": "node scripts/check-workflows.js"
   },
   "devDependencies": { "typescript": "^5.5.4" }
 }

@@ -22,6 +22,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: node scripts/check-workflows.js
+
       # The API's unit tests import @prisma/client for its error types, so the
       # client has to exist before ts-jest resolves them.
       - run: pnpm --filter @slipstream/api exec prisma generate --schema prisma/schema.prisma
