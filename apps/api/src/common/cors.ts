@@ -17,11 +17,24 @@
  * deploy over a trailing slash would be pedantry, so normalise instead.
  */
 export function normaliseOrigin(raw: string): string {
-  return raw
+  const trimmed = raw
     .trim()
     .replace(/^["']|["']$/g, '')
     .replace(/\/+$/, '')
     .trim();
+
+  if (trimmed === '') return '';
+
+  // A scheme-less value — `example.com` rather than `https://example.com` — is
+  // what you get from copying a hostname out of a dashboard, and it can never
+  // match: an Origin header always carries a scheme. There is exactly one
+  // sensible reading, so apply it rather than rejecting the deploy over a
+  // missing "https://". Loopback gets http, since nobody runs local dev on TLS.
+  if (!/^https?:\/\//i.test(trimmed)) {
+    const isLoopback = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(trimmed);
+    return `${isLoopback ? 'http' : 'https'}://${trimmed}`;
+  }
+  return trimmed;
 }
 
 export function parseAllowedOrigins(webOrigin: string): string[] {

@@ -18,6 +18,28 @@ describe('normaliseOrigin', () => {
   it('strips whitespace around a pasted value', () => {
     expect(normaliseOrigin(`  ${PROD}  `)).toBe(PROD);
   });
+
+  it('adds the scheme a dashboard copy leaves off', () => {
+    // This is the exact value that reached production and silently rejected
+    // every request: a hostname with no scheme, which no Origin header can
+    // ever equal.
+    expect(normaliseOrigin('betway-slipstream-web.vercel.app')).toBe(PROD);
+    expect(normaliseOrigin('betway-slipstream-web.vercel.app/')).toBe(PROD);
+  });
+
+  it('assumes http for loopback, since local dev is not on TLS', () => {
+    expect(normaliseOrigin('localhost:3000')).toBe('http://localhost:3000');
+    expect(normaliseOrigin('127.0.0.1:4000')).toBe('http://127.0.0.1:4000');
+  });
+
+  it('leaves an explicit scheme alone, including http in production', () => {
+    expect(normaliseOrigin('http://staging.internal:8080')).toBe('http://staging.internal:8080');
+  });
+
+  it('returns empty for an empty entry rather than inventing https://', () => {
+    expect(normaliseOrigin('   ')).toBe('');
+    expect(normaliseOrigin('""')).toBe('');
+  });
 });
 
 describe('parseAllowedOrigins', () => {
