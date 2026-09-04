@@ -4,21 +4,22 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "prebuild": "pnpm --filter @slipstream/shared build",
+    "prebuild": "pnpm --filter @slipstream/shared build && prisma generate --schema prisma/schema.prisma",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\"",
-    "prestart": "pnpm --filter @slipstream/shared build",
+    "prestart": "pnpm --filter @slipstream/shared build && prisma generate --schema prisma/schema.prisma",
     "start": "nest start",
-    "predev": "pnpm --filter @slipstream/shared build",
+    "predev": "pnpm --filter @slipstream/shared build && prisma generate --schema prisma/schema.prisma",
     "dev": "nest start --watch",
-    "prestart:dev": "pnpm --filter @slipstream/shared build",
+    "prestart:dev": "pnpm --filter @slipstream/shared build && prisma generate --schema prisma/schema.prisma",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:live": "jest --config ./jest.live.config.js",
-    "test:dist-boot": "node scripts/dist-boot-check.js"
+    "test:dist-boot": "node scripts/dist-boot-check.js",
+    "pretest": "prisma generate --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@slipstream/shared": "workspace:*",

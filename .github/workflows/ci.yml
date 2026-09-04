@@ -24,10 +24,6 @@ jobs:
 
       - run: node scripts/check-workflows.js
 
-      # The API's unit tests import @prisma/client for its error types, so the
-      # client has to exist before ts-jest resolves them.
-      - run: pnpm --filter @slipstream/api exec prisma generate --schema prisma/schema.prisma
-
       - run: pnpm --filter @slipstream/shared test
       - run: pnpm --filter @slipstream/api test
       - run: pnpm --filter @slipstream/web test
@@ -62,6 +58,5 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @slipstream/api exec prisma generate --schema prisma/schema.prisma
       - name: Betway contract check
         run: pnpm --filter @slipstream/api test:live
