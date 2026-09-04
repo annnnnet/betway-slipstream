@@ -63,6 +63,37 @@ jobs:
             --platforms=android /tmp/scaffold
           cp -r /tmp/scaffold/android ./android
 
+      # The Flutter template declares android.permission.INTERNET only in
+      # src/debug/ and src/profile/ — added there for hot reload — and never in
+      # src/main/. So a debug build has network access and a *release* build
+      # does not, which is the one that goes to testers.
+      #
+      # Without the permission the app is not denied at the HTTP layer: the
+      # process never joins gid 3003 (AID_INET), so the kernel refuses every
+      # socket outright. Requests fail instantly, and the app reports it as
+      # "could not reach the server" — indistinguishable from the API being
+      # down. A tester found exactly this on the first install.
+      - name: Declare INTERNET permission for release builds
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          xml = p.read_text()
+          if 'android.permission.INTERNET' in xml:
+              print('INTERNET already declared'); raise SystemExit(0)
+          xml = xml.replace(
+              '<manifest',
+              '<manifest', 1)
+          xml = re.sub(
+              r'(<manifest[^>]*>)',
+              r'\1\n    <uses-permission android:name="android.permission.INTERNET"/>',
+              xml, count=1)
+          p.write_text(xml)
+          print('INTERNET permission added')
+          PY
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml \
+            || { echo "::error::Failed to add INTERNET permission"; exit 1; }
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -104,6 +135,20 @@ jobs:
 
       - name: Build release APK
         run: flutter build apk --release --dart-define=API_URL=$API_URL
+
+      # Assert against the *compiled* APK rather than the source manifest.
+      # The source is what we edited; this is what testers install, and the two
+      # can diverge (manifest merger, a plugin, a build variant). An app that
+      # installs and launches but cannot open a socket is the worst kind of
+      # release, because it looks like a server outage from the outside.
+      - name: Verify the APK can reach the network
+        run: |
+          AAPT="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | tail -1)"
+          PERMS="$("$AAPT" dump permissions build/app/outputs/flutter-apk/app-release.apk)"
+          echo "$PERMS"
+          echo "$PERMS" | grep -q 'android.permission.INTERNET' \
+            || { echo "::error::app-release.apk declares no INTERNET permission — every request would fail at the socket layer."; exit 1; }
+          echo "INTERNET permission present in the release APK."
 
       - uses: actions/upload-artifact@v4
         with:
