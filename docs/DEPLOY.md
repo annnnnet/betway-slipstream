@@ -70,8 +70,23 @@ Generate a public domain under **Settings → Networking**. Check
 
 ## 3. Vercel — the web app
 
-Import the repo. **Root directory: `apps/web`.** Vercel detects Next.js and
-the pnpm workspace on its own.
+Import the repo. **Root directory: `apps/web`.**
+
+Two settings that are easy to get wrong, and whose failures both look like
+something else:
+
+- **Root directory must be `apps/web`, not the repo root.** At the root,
+  Vercel runs `pnpm -r build`, which compiles the API and everything else —
+  none of which belongs in a web deployment, and any of which can then break
+  it.
+- **Framework preset must be Next.js.** On "Other", the Next build runs and
+  *succeeds*, then Vercel looks for a static `public/` directory, finds none,
+  and fails with `No Output Directory named "public" found`. The build log
+  shows a perfectly good route table immediately above the error, which makes
+  it read like a Next problem rather than a preset problem.
+  `apps/web/vercel.json` pins `"framework": "nextjs"` so a fresh import cannot
+  drift, but an existing project keeps whatever the dashboard already has —
+  fix it there once.
 
 ```
 NEXT_PUBLIC_API_URL=https://<railway-domain>     # no trailing slash, no /api
