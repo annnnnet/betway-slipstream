@@ -114,6 +114,42 @@ jobs:
       # fork or a first push still gets a green build and a downloadable APK
       # instead of a red X for a credential it was never given.
       # FIREBASE_APP_ID comes from the job-level env above — see the note there.
+      # The distribution action reports every credential problem as "Failed to
+      # authenticate, have you run firebase login?", which is unhelpful when
+      # the real cause is a truncated paste, a base64-wrapped key, or a service
+      # account missing the App Distribution Admin role. Check the shape here
+      # so the log says which of those it is. Nothing secret is printed.
+      - name: Check the service-account credentials
+        if: ${{ env.FIREBASE_APP_ID != '' }}
+        env:
+          CREDS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$CREDS" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT is empty. Add the service-account JSON as a repository secret."
+            exit 1
+          fi
+          node -e '
+            const raw = process.env.CREDS;
+            let creds;
+            try { creds = JSON.parse(raw); }
+            catch {
+              console.log("::error::FIREBASE_SERVICE_ACCOUNT is not valid JSON. Paste the whole downloaded key file, unmodified and not base64-encoded.");
+              process.exit(1);
+            }
+            const missing = ["type", "project_id", "private_key", "client_email"].filter((k) => !creds[k]);
+            if (missing.length) {
+              console.log(`::error::FIREBASE_SERVICE_ACCOUNT is missing: ${missing.join(", ")}. That is not a service-account key file.`);
+              process.exit(1);
+            }
+            if (creds.type !== "service_account") {
+              console.log(`::error::FIREBASE_SERVICE_ACCOUNT has type "${creds.type}", expected "service_account".`);
+              process.exit(1);
+            }
+            // Safe to print: the account address is an identifier, not a credential.
+            console.log(`Service account ${creds.client_email} on project ${creds.project_id}`);
+            console.log("::notice::If upload still fails to authenticate, grant this account the \"Firebase App Distribution Admin\" role in Google Cloud IAM.");
+          '
+
       # Individual emails rather than a group, so inviting an external
       # reviewer costs one workflow input instead of a console visit and a
       # group whose *alias* has to match a string buried in this file. Groups
